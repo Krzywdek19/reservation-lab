@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: reservation-lab-postgres
+    environment:
+        POSTGRES_DB: reservation_lab
+        POSTGRES_USER: reservation_lab_user
+        POSTGRES_PASSWORD: reservation_lab_password
+    ports:
+        - "5432:5432"
+    volumes:
+        - postgres_data:/var/lib/postgresql/data
+volumes:
+  postgres_data:
