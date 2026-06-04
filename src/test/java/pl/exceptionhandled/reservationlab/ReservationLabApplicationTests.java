@@ -1,4 +1,4 @@
-package pl.exceptionhandled.reservation_lab;
+package pl.exceptionhandled.reservationlab;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

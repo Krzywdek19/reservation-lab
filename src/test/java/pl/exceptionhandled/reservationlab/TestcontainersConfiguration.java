@@ -1,4 +1,4 @@
-package pl.exceptionhandled.reservation_lab;
+package pl.exceptionhandled.reservationlab;
 
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
