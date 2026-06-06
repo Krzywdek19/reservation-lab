@@ -1,4 +1,4 @@
-package pl.exceptionhandled.reservationlab.reservation;
+package pl.exceptionhandled.reservationlab.reservation.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,9 +10,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import pl.exceptionhandled.reservationlab.event.Event;
 import pl.exceptionhandled.reservationlab.event.EventRepository;
 import pl.exceptionhandled.reservationlab.event.exception.EventNotFoundException;
+import pl.exceptionhandled.reservationlab.reservation.Reservation;
+import pl.exceptionhandled.reservationlab.reservation.ReservationRepository;
+import pl.exceptionhandled.reservationlab.reservation.ReservationStatus;
 import pl.exceptionhandled.reservationlab.reservation.exception.*;
-import pl.exceptionhandled.reservationlab.reservation.service.CreateReservationCommand;
-import pl.exceptionhandled.reservationlab.reservation.service.ReservationServiceImpl;
 import pl.exceptionhandled.reservationlab.seat.Seat;
 import pl.exceptionhandled.reservationlab.seat.SeatRepository;
 import pl.exceptionhandled.reservationlab.seat.exception.SeatNotFoundException;
