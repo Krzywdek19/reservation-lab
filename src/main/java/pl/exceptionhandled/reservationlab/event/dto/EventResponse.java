@@ -1,4 +1,4 @@
-package pl.exceptionhandled.reservationlab.dto;
+package pl.exceptionhandled.reservationlab.event.dto;
 
 import java.time.Instant;
 import java.util.UUID;

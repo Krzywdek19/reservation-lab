@@ -1,8 +1,8 @@
-package pl.exceptionhandled.reservationlab.mapper;
+package pl.exceptionhandled.reservationlab.event.mapper;
 
 import org.springframework.stereotype.Component;
-import pl.exceptionhandled.reservationlab.dto.CreateEventRequest;
-import pl.exceptionhandled.reservationlab.dto.EventResponse;
+import pl.exceptionhandled.reservationlab.event.dto.CreateEventRequest;
+import pl.exceptionhandled.reservationlab.event.dto.EventResponse;
 import pl.exceptionhandled.reservationlab.event.Event;
 import pl.exceptionhandled.reservationlab.event.service.CreateEventCommand;
 

@@ -23,7 +23,6 @@ public class ReservationController {
     }
 
     @GetMapping("/{reservationId}")
-    @ResponseStatus(HttpStatus.OK)
     public ReservationResponse getReservation(@PathVariable UUID reservationId) {
         return reservationFacade.getReservation(reservationId);
     }

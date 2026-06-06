@@ -1,12 +1,12 @@
-package pl.exceptionhandled.reservationlab.api;
+package pl.exceptionhandled.reservationlab.event.api;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import pl.exceptionhandled.reservationlab.dto.CreateEventRequest;
-import pl.exceptionhandled.reservationlab.dto.EventResponse;
+import pl.exceptionhandled.reservationlab.event.dto.CreateEventRequest;
+import pl.exceptionhandled.reservationlab.event.dto.EventResponse;
 import pl.exceptionhandled.reservationlab.event.Event;
 import pl.exceptionhandled.reservationlab.event.service.EventService;
-import pl.exceptionhandled.reservationlab.mapper.EventMapper;
+import pl.exceptionhandled.reservationlab.event.mapper.EventMapper;
 
 import java.util.List;
 import java.util.UUID;

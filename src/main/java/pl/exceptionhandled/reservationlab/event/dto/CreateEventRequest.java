@@ -1,4 +1,4 @@
-package pl.exceptionhandled.reservationlab.dto;
+package pl.exceptionhandled.reservationlab.event.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
