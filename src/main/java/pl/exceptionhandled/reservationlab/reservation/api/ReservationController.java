@@ -22,6 +22,12 @@ public class ReservationController {
         return reservationFacade.createReservation(request);
     }
 
+    @GetMapping("/{reservationId}")
+    @ResponseStatus(HttpStatus.OK)
+    public ReservationResponse getReservation(@PathVariable UUID reservationId) {
+        return reservationFacade.getReservation(reservationId);
+    }
+
     @PatchMapping("/{reservationId}/confirm")
     public ReservationResponse confirmReservation(@PathVariable UUID reservationId) {
         return reservationFacade.confirmReservation(reservationId);

@@ -22,6 +22,11 @@ public class ReservationFacade {
         return reservationMapper.toResponse(reservation);
     }
 
+    public ReservationResponse getReservation(UUID reservationId) {
+        var reservation = reservationService.getReservation(reservationId);
+        return reservationMapper.toResponse(reservation);
+    }
+
     public ReservationResponse confirmReservation(UUID reservationId) {
         var reservation = reservationService.confirmReservation(reservationId);
         return reservationMapper.toResponse(reservation);

@@ -15,4 +15,6 @@ public interface ReservationRepository extends JpaRepository<Reservation, UUID> 
             UUID seatId,
             Collection<ReservationStatus> statuses
     );
+
+    List<Reservation> findByEvent_Id(UUID eventId);
 }

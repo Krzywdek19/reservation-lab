@@ -4,12 +4,22 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.exceptionhandled.reservationlab.event.EventRepository;
+import pl.exceptionhandled.reservationlab.event.exception.EventNotFoundException;
 import pl.exceptionhandled.reservationlab.reservation.Reservation;
 import pl.exceptionhandled.reservationlab.reservation.ReservationRepository;
 import pl.exceptionhandled.reservationlab.reservation.ReservationStatus;
+import pl.exceptionhandled.reservationlab.reservation.exception.CannotConfirmCancelledReservationException;
+import pl.exceptionhandled.reservationlab.reservation.exception.ReservationAlreadyCancelledException;
+import pl.exceptionhandled.reservationlab.reservation.exception.ReservationAlreadyConfirmedException;
+import pl.exceptionhandled.reservationlab.reservation.exception.ReservationNotFoundException;
+import pl.exceptionhandled.reservationlab.reservation.exception.SeatAlreadyReservedException;
+import pl.exceptionhandled.reservationlab.reservation.exception.SeatDoesNotBelongToEventException;
 import pl.exceptionhandled.reservationlab.seat.SeatRepository;
+import pl.exceptionhandled.reservationlab.seat.exception.SeatNotFoundException;
 import pl.exceptionhandled.reservationlab.user.AppUserRepository;
+import pl.exceptionhandled.reservationlab.user.exception.UserNotFoundException;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -25,16 +35,16 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     public Reservation createReservation(CreateReservationCommand command) {
         var event = eventRepository.findById(command.eventId())
-                .orElseThrow(() -> new IllegalArgumentException("Event not found"));
+                .orElseThrow(() -> new EventNotFoundException(command.eventId()));
 
         var seat = seatRepository.findById(command.seatId())
-                .orElseThrow(() -> new IllegalArgumentException("Seat not found"));
+                .orElseThrow(() -> new SeatNotFoundException(command.seatId()));
 
         var user = appUserRepository.findById(command.userId())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(command.userId()));
 
         if (!seat.getEvent().getId().equals(event.getId())) {
-            throw new IllegalArgumentException("Seat does not belong to the specified event");
+            throw new SeatDoesNotBelongToEventException(seat.getId(), event.getId());
         }
 
         boolean alreadyReserved = reservationRepository.existsByEvent_IdAndSeat_IdAndStatusIn(
@@ -44,7 +54,7 @@ public class ReservationServiceImpl implements ReservationService {
         );
 
         if (alreadyReserved) {
-            throw new IllegalStateException("Seat is already reserved for this event");
+            throw new SeatAlreadyReservedException(seat.getId(), event.getId());
         }
 
         var reservation = Reservation.builder()
@@ -58,16 +68,45 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Reservation getReservation(UUID reservationId) {
+        return reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new ReservationNotFoundException(reservationId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Reservation> getUserReservations(UUID userId) {
+        return reservationRepository.findByUser_Id(userId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Reservation> getEventReservations(UUID eventId) {
+        return reservationRepository.findByEvent_Id(eventId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isSeatAvailable(UUID eventId, UUID seatId) {
+        return !reservationRepository.existsByEvent_IdAndSeat_IdAndStatusIn(
+                eventId,
+                seatId,
+                ReservationStatus.ACTIVE_STATUSES
+        );
+    }
+
+    @Override
     public Reservation confirmReservation(UUID reservationId) {
         Reservation reservation = reservationRepository.findById(reservationId)
-                .orElseThrow(() -> new IllegalArgumentException("Reservation not found"));
+                .orElseThrow(() -> new ReservationNotFoundException(reservationId));
 
         if (reservation.getStatus().equals(ReservationStatus.CONFIRMED)) {
-            throw new IllegalStateException("Reservation is already confirmed");
+            throw new ReservationAlreadyConfirmedException(reservationId);
         }
 
         if (reservation.getStatus().equals(ReservationStatus.CANCELLED)) {
-            throw new IllegalStateException("Cancelled reservation cannot be confirmed");
+            throw new CannotConfirmCancelledReservationException(reservationId);
         }
 
         reservation.setStatus(ReservationStatus.CONFIRMED);
@@ -78,10 +117,10 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     public Reservation cancelReservation(UUID reservationId) {
         Reservation reservation = reservationRepository.findById(reservationId)
-                .orElseThrow(() -> new IllegalArgumentException("Reservation not found"));
+                .orElseThrow(() -> new ReservationNotFoundException(reservationId));
 
         if (reservation.getStatus().equals(ReservationStatus.CANCELLED)) {
-            throw new IllegalStateException("Reservation is already cancelled");
+            throw new ReservationAlreadyCancelledException(reservationId);
         }
 
         reservation.setStatus(ReservationStatus.CANCELLED);
