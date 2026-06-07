@@ -1,5 +1,6 @@
 package pl.exceptionhandled.reservationlab.reservation.service;
 
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +43,9 @@ public class ReservationServiceImplTest {
     @Mock
     private AppUserRepository appUserRepository;
 
+    @Mock
+    private EntityManager entityManager;
+
     @InjectMocks
     private ReservationServiceImpl reservationService;
 
@@ -82,23 +86,35 @@ public class ReservationServiceImplTest {
 
     @Test
     void createReservationShouldCreatePendingReservation() {
-        CreateReservationCommand command = new CreateReservationCommand(userId,eventId, seatId);
+        CreateReservationCommand command = new CreateReservationCommand(userId, eventId, seatId);
 
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
         when(seatRepository.findById(seatId)).thenReturn(Optional.of(seat));
         when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(reservationRepository.existsByEvent_IdAndSeat_IdAndStatusIn(eventId, seatId, ReservationStatus.ACTIVE_STATUSES)).thenReturn(false);
 
-        when(reservationRepository.save(any(Reservation.class)))
+        when(reservationRepository.existsByEvent_IdAndSeat_IdAndStatusIn(
+                eventId,
+                seatId,
+                ReservationStatus.ACTIVE_STATUSES
+        )).thenReturn(false);
+
+        when(reservationRepository.saveAndFlush(any(Reservation.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         Reservation result = reservationService.createReservation(command);
 
         ArgumentCaptor<Reservation> captor = ArgumentCaptor.forClass(Reservation.class);
-        verify(reservationRepository).save(captor.capture());
+        verify(reservationRepository).saveAndFlush(captor.capture());
+        verify(entityManager).refresh(result);
 
         Reservation savedReservation = captor.getValue();
+
+        assertThat(savedReservation.getUser()).isEqualTo(user);
+        assertThat(savedReservation.getEvent()).isEqualTo(event);
+        assertThat(savedReservation.getSeat()).isEqualTo(seat);
         assertThat(savedReservation.getStatus()).isEqualTo(ReservationStatus.PENDING);
+
+        assertThat(result.getStatus()).isEqualTo(ReservationStatus.PENDING);
     }
 
     @Test

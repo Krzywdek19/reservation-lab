@@ -23,6 +23,6 @@ public class Event extends BaseEntity {
     private String location;
     @Column(name = "starts_at", nullable = false)
     private Instant startsAt;
-    @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "event")
     private List<Seat> seats = new ArrayList<>();
 }

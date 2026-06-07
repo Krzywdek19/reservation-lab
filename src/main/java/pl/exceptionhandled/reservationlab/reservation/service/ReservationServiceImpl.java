@@ -1,5 +1,6 @@
 package pl.exceptionhandled.reservationlab.reservation.service;
 
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +32,7 @@ public class ReservationServiceImpl implements ReservationService {
     private final EventRepository eventRepository;
     private final SeatRepository seatRepository;
     private final AppUserRepository appUserRepository;
+    private final EntityManager entityManager;
 
     @Override
     public Reservation createReservation(CreateReservationCommand command) {
@@ -64,7 +66,9 @@ public class ReservationServiceImpl implements ReservationService {
                 .status(ReservationStatus.PENDING)
                 .build();
 
-        return reservationRepository.save(reservation);
+        var saved = reservationRepository.saveAndFlush(reservation);
+        entityManager.refresh(saved);
+        return saved;
     }
 
     @Override
