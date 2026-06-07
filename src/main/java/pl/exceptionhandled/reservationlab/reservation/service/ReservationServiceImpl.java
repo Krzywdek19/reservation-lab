@@ -1,9 +1,11 @@
 package pl.exceptionhandled.reservationlab.reservation.service;
 
 import jakarta.persistence.EntityManager;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 import pl.exceptionhandled.reservationlab.event.EventRepository;
 import pl.exceptionhandled.reservationlab.event.exception.EventNotFoundException;
 import pl.exceptionhandled.reservationlab.reservation.Reservation;
@@ -26,6 +28,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Validated
 public class ReservationServiceImpl implements ReservationService {
 
     private final ReservationRepository reservationRepository;
@@ -35,7 +38,7 @@ public class ReservationServiceImpl implements ReservationService {
     private final EntityManager entityManager;
 
     @Override
-    public Reservation createReservation(CreateReservationCommand command) {
+    public Reservation createReservation(@Valid CreateReservationCommand command) {
         var event = eventRepository.findById(command.eventId())
                 .orElseThrow(() -> new EventNotFoundException(command.eventId()));
 

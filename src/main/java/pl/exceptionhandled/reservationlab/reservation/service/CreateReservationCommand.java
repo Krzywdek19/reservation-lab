@@ -1,6 +1,8 @@
 package pl.exceptionhandled.reservationlab.reservation.service;
 
+import jakarta.validation.constraints.NotNull;
+
 import java.util.UUID;
 
-public record CreateReservationCommand(UUID userId, UUID eventId, UUID seatId) {
+public record CreateReservationCommand(@NotNull UUID userId, @NotNull UUID eventId, @NotNull UUID seatId) {
 }

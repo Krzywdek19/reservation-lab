@@ -1,7 +1,9 @@
 package pl.exceptionhandled.reservationlab.user.service;
 
+import jakarta.validation.constraints.NotBlank;
+
 public record CreateAppUserCommand(
-        String email,
-        String username
+        @NotBlank String email,
+        @NotBlank String username
 ) {
 }

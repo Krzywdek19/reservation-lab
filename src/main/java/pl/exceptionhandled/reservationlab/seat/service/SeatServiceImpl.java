@@ -1,8 +1,10 @@
 package pl.exceptionhandled.reservationlab.seat.service;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 import pl.exceptionhandled.reservationlab.event.EventRepository;
 import pl.exceptionhandled.reservationlab.event.exception.EventNotFoundException;
 import pl.exceptionhandled.reservationlab.seat.exception.SeatAlreadyExistsException;
@@ -16,12 +18,13 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Validated
 public class SeatServiceImpl implements SeatService {
     private final SeatRepository seatRepository;
     private final EventRepository eventRepository;
 
     @Override
-    public Seat createSeat(CreateSeatCommand command) {
+    public Seat createSeat(@Valid CreateSeatCommand command) {
         var event = eventRepository.findById(command.eventId())
                 .orElseThrow(() -> new EventNotFoundException(command.eventId()));
 

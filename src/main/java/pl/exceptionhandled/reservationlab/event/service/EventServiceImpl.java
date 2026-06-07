@@ -1,8 +1,10 @@
 package pl.exceptionhandled.reservationlab.event.service;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 import pl.exceptionhandled.reservationlab.event.Event;
 import pl.exceptionhandled.reservationlab.event.EventRepository;
 import pl.exceptionhandled.reservationlab.event.exception.EventNotFoundException;
@@ -13,12 +15,13 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Validated
 public class EventServiceImpl implements EventService {
 
     private final EventRepository eventRepository;
 
     @Override
-    public Event createEvent(CreateEventCommand command) {
+    public Event createEvent(@Valid CreateEventCommand command) {
         Event event = Event.builder()
                 .name(command.name())
                 .location(command.location())
