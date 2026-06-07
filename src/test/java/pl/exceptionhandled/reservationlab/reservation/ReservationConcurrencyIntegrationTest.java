@@ -1,6 +1,5 @@
 package pl.exceptionhandled.reservationlab.reservation;
 
-import org.apache.catalina.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +53,19 @@ public class ReservationConcurrencyIntegrationTest {
 
     @Test
     void shouldAllowOnlyOneReservationWhenManyUsersReserveSameSeatConcurrently() throws Exception {
+        try (ExecutorService executorService = Executors.newFixedThreadPool(20)) {
+            shouldAllowOnlyOneReservationWithExecutor(executorService);
+        }
+    }
+
+    @Test
+    void shouldAllowOnlyOneReservationWhenManyUsersReserveSameSeatConcurrentlyWithVirtualThreads() throws Exception{
+        try (ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor()) {
+            shouldAllowOnlyOneReservationWithExecutor(executorService);
+        }
+    }
+
+    private void shouldAllowOnlyOneReservationWithExecutor(ExecutorService executorService) throws Exception {
         String eventId = createEvent("Java Meetup", "Warsaw");
         String seatId = createSeat(eventId, "A1");
         List<String> usersId = new ArrayList<>(20);
@@ -61,8 +73,6 @@ public class ReservationConcurrencyIntegrationTest {
             String userId = createUser(String.format("john%s@example.com", i), "John");
             usersId.add(userId);
         }
-
-        ExecutorService executorService = Executors.newFixedThreadPool(20);
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch doneLatch = new CountDownLatch(20);
 
