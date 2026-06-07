@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import pl.exceptionhandled.reservationlab.user.AppUser;
 import pl.exceptionhandled.reservationlab.user.AppUserRepository;
+import pl.exceptionhandled.reservationlab.user.exception.EmailAlreadyExistsException;
 import pl.exceptionhandled.reservationlab.user.exception.UserNotFoundException;
 
 import java.util.List;
@@ -22,6 +23,9 @@ public class AppUserServiceImpl implements AppUserService {
 
     @Override
     public AppUser createUser(@Valid CreateAppUserCommand command) {
+        if(appUserRepository.existsByEmail(command.email())) {
+            throw new EmailAlreadyExistsException(command.email());
+        }
         AppUser user = AppUser.builder()
                 .email(command.email())
                 .username(command.username())
