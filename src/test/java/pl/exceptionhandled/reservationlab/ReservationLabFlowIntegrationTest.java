@@ -112,6 +112,8 @@ class ReservationLabFlowIntegrationTest {
                 .andExpect(jsonPath("$.userId").value(userId))
                 .andExpect(jsonPath("$.eventId").value(eventId))
                 .andExpect(jsonPath("$.seatId").value(seatId))
+                .andExpect(jsonPath("$.reservationNumber").exists())
+                .andExpect(jsonPath("$.reservationNumber").isNumber())
                 .andExpect(jsonPath("$.status").value("PENDING"));
 
         assertThat(appUserRepository.findAll()).hasSize(1);

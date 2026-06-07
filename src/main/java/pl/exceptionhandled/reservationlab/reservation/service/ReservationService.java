@@ -1,5 +1,6 @@
 package pl.exceptionhandled.reservationlab.reservation.service;
 
+import jakarta.validation.Valid;
 import pl.exceptionhandled.reservationlab.reservation.Reservation;
 
 import java.util.List;
@@ -7,7 +8,7 @@ import java.util.UUID;
 
 public interface ReservationService {
 
-    Reservation createReservation(CreateReservationCommand command);
+    Reservation createReservation(@Valid CreateReservationCommand command);
 
     Reservation confirmReservation(UUID reservationId);
 
