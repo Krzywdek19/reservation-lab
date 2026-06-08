@@ -9,6 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import pl.exceptionhandled.reservationlab.event.EventRepository;
 import pl.exceptionhandled.reservationlab.seat.SeatRepository;
+import pl.exceptionhandled.reservationlab.support.ReservationLabApiClient;
 import pl.exceptionhandled.reservationlab.user.AppUserRepository;
 
 import java.time.Instant;
@@ -38,6 +39,13 @@ class ReservationConstraintIntegrationTest {
     @Autowired
     private ReservationRepository reservationRepository;
 
+    private ReservationLabApiClient apiClient;
+
+    @BeforeEach
+    void setUp() {
+        this.apiClient = new ReservationLabApiClient(mockMvc);
+    }
+
     @BeforeEach
     void cleanDatabase() {
         reservationRepository.deleteAll();
@@ -48,11 +56,11 @@ class ReservationConstraintIntegrationTest {
 
     @Test
     void shouldAllowNewReservationForSameSeatAfterCancellation() throws Exception {
-        String userId = createUser("john@example.com", "john");
-        String eventId = createEvent("Java Meetup", "Warsaw");
-        String seatId = createSeat(eventId, "A1");
+        String userId = apiClient.createUser("john@example.com", "john");
+        String eventId = apiClient.createEvent("Java Meetup", "Warsaw");
+        String seatId = apiClient.createSeat(eventId, "A1");
 
-        String reservationId = createReservation(userId, eventId, seatId);
+        String reservationId = apiClient.createReservation(userId, eventId, seatId);
 
         mockMvc.perform(patch("/api/v1/reservations/{reservationId}/cancel", reservationId))
                 .andExpect(status().isOk())
@@ -76,11 +84,11 @@ class ReservationConstraintIntegrationTest {
 
     @Test
     void shouldReturnConflictWhenActiveReservationAlreadyExistsForSeat() throws Exception {
-        String userId = createUser("adam@example.com", "adam");
-        String eventId = createEvent("Spring Meetup", "Krakow");
-        String seatId = createSeat(eventId, "B1");
+        String userId = apiClient.createUser("adam@example.com", "adam");
+        String eventId = apiClient.createEvent("Spring Meetup", "Krakow");
+        String seatId = apiClient.createSeat(eventId, "B1");
 
-        createReservation(userId, eventId, seatId);
+        apiClient.createReservation(userId, eventId, seatId);
 
         mockMvc.perform(post("/api/v1/reservations")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -95,81 +103,5 @@ class ReservationConstraintIntegrationTest {
                 .andExpect(jsonPath("$.message").exists());
 
         assertThat(reservationRepository.findAll()).hasSize(1);
-    }
-
-    private String createUser(String email, String username) throws Exception {
-        String response = mockMvc.perform(post("/api/v1/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "email": "%s",
-                                  "username": "%s"
-                                }
-                                """.formatted(email, username)))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        return extractJsonValue(response, "id");
-    }
-
-    private String createEvent(String name, String location) throws Exception {
-        String response = mockMvc.perform(post("/api/v1/events")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "name": "%s",
-                                  "location": "%s",
-                                  "startsAt": "%s"
-                                }
-                                """.formatted(name, location, Instant.now().plusSeconds(3600))))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        return extractJsonValue(response, "id");
-    }
-
-    private String createSeat(String eventId, String seatNumber) throws Exception {
-        String response = mockMvc.perform(post("/api/v1/events/{eventId}/seats", eventId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "seatNumber": "%s"
-                                }
-                                """.formatted(seatNumber)))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        return extractJsonValue(response, "id");
-    }
-
-    private String createReservation(String userId, String eventId, String seatId) throws Exception {
-        String response = mockMvc.perform(post("/api/v1/reservations")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "userId": "%s",
-                                  "eventId": "%s",
-                                  "seatId": "%s"
-                                }
-                                """.formatted(userId, eventId, seatId)))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        return extractJsonValue(response, "id");
-    }
-
-    private String extractJsonValue(String json, String fieldName) {
-        String field = "\"" + fieldName + "\":\"";
-        int start = json.indexOf(field) + field.length();
-        int end = json.indexOf("\"", start);
-        return json.substring(start, end);
     }
 }
