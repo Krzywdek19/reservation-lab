@@ -3,6 +3,7 @@ package pl.exceptionhandled.reservationlab.reservation.service;
 import jakarta.persistence.EntityManager;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -69,9 +70,13 @@ public class ReservationServiceImpl implements ReservationService {
                 .status(ReservationStatus.PENDING)
                 .build();
 
-        var saved = reservationRepository.saveAndFlush(reservation);
-        entityManager.refresh(saved);
-        return saved;
+        try {
+            var saved = reservationRepository.saveAndFlush(reservation);
+            entityManager.refresh(saved);
+            return saved;
+        }catch (DataIntegrityViolationException exception) {
+            throw new SeatAlreadyReservedException(seat.getId(), event.getId());
+        }
     }
 
     @Override

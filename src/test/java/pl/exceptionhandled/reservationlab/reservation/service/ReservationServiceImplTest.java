@@ -8,6 +8,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.test.util.ReflectionTestUtils;
 import pl.exceptionhandled.reservationlab.event.Event;
 import pl.exceptionhandled.reservationlab.event.EventRepository;
 import pl.exceptionhandled.reservationlab.event.exception.EventNotFoundException;
@@ -22,6 +24,7 @@ import pl.exceptionhandled.reservationlab.user.AppUser;
 import pl.exceptionhandled.reservationlab.user.AppUserRepository;
 import pl.exceptionhandled.reservationlab.user.exception.UserNotFoundException;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -270,5 +273,53 @@ public class ReservationServiceImplTest {
 
         assertThatThrownBy(() -> reservationService.cancelReservation(reservationId))
                 .isInstanceOf(ReservationAlreadyCancelledException.class);
+    }
+
+    @Test
+    void shouldThrowSeatAlreadyReservedExceptionWhenDatabaseConstraintIsViolated(){
+        UUID userId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        UUID seatId = UUID.randomUUID();
+
+        var command = new CreateReservationCommand(userId, eventId, seatId);
+
+        var user = AppUser.builder()
+                .email("john@example.com")
+                .username("john")
+                .build();
+
+        var event = Event.builder()
+                .name("Java Meetup")
+                .location("Warsaw")
+                .startsAt(Instant.now().plusSeconds(3600))
+                .build();
+
+        var seat = Seat.builder()
+                .event(event)
+                .seatNumber("A1")
+                .build();
+
+        ReflectionTestUtils.setField(user, "id", userId);
+        ReflectionTestUtils.setField(event, "id", eventId);
+        ReflectionTestUtils.setField(seat, "id", seatId);
+
+        when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
+        when(seatRepository.findById(seatId)).thenReturn(Optional.of(seat));
+        when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        when(reservationRepository.existsByEvent_IdAndSeat_IdAndStatusIn(
+                eventId,
+                seatId,
+                ReservationStatus.ACTIVE_STATUSES
+        )).thenReturn(false);
+
+        when(reservationRepository.saveAndFlush(any(Reservation.class)))
+                .thenThrow(new DataIntegrityViolationException("Unique constraint violation"));
+
+        assertThatThrownBy(() -> reservationService.createReservation(command))
+                .isInstanceOf(SeatAlreadyReservedException.class);
+
+        verify(reservationRepository).saveAndFlush(any(Reservation.class));
+        verify(entityManager, never()).refresh(any());
     }
 }
