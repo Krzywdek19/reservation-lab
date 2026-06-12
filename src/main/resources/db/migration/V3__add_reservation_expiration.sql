@@ -1,0 +1,2 @@
+ALTER TABLE reservations
+ADD COLUMN expires_at TIMESTAMP WITH TIME ZONE;

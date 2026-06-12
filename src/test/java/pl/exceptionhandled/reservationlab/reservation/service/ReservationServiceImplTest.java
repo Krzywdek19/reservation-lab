@@ -5,18 +5,21 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.test.util.ReflectionTestUtils;
 import pl.exceptionhandled.reservationlab.event.Event;
 import pl.exceptionhandled.reservationlab.event.EventRepository;
 import pl.exceptionhandled.reservationlab.event.exception.EventNotFoundException;
 import pl.exceptionhandled.reservationlab.reservation.Reservation;
 import pl.exceptionhandled.reservationlab.reservation.ReservationRepository;
 import pl.exceptionhandled.reservationlab.reservation.ReservationStatus;
-import pl.exceptionhandled.reservationlab.reservation.exception.*;
+import pl.exceptionhandled.reservationlab.reservation.exception.CannotConfirmCancelledReservationException;
+import pl.exceptionhandled.reservationlab.reservation.exception.ReservationAlreadyCancelledException;
+import pl.exceptionhandled.reservationlab.reservation.exception.ReservationAlreadyConfirmedException;
+import pl.exceptionhandled.reservationlab.reservation.exception.SeatAlreadyReservedException;
+import pl.exceptionhandled.reservationlab.reservation.rule.ReservationCreationContext;
+import pl.exceptionhandled.reservationlab.reservation.rule.ReservationRule;
 import pl.exceptionhandled.reservationlab.seat.Seat;
 import pl.exceptionhandled.reservationlab.seat.SeatRepository;
 import pl.exceptionhandled.reservationlab.seat.exception.SeatNotFoundException;
@@ -25,15 +28,21 @@ import pl.exceptionhandled.reservationlab.user.AppUserRepository;
 import pl.exceptionhandled.reservationlab.user.exception.UserNotFoundException;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class ReservationServiceImplTest {
+class ReservationServiceImplTest {
+
     @Mock
     private ReservationRepository reservationRepository;
 
@@ -49,7 +58,9 @@ public class ReservationServiceImplTest {
     @Mock
     private EntityManager entityManager;
 
-    @InjectMocks
+    @Mock
+    private ReservationRule reservationRule;
+
     private ReservationServiceImpl reservationService;
 
     private UUID userId;
@@ -68,258 +79,277 @@ public class ReservationServiceImplTest {
         seatId = UUID.randomUUID();
         reservationId = UUID.randomUUID();
 
-        user = AppUser.builder()
-                .email("john@example.com")
-                .username("john")
-                .build();
-        user.setId(userId);
+        user = createUser(userId);
+        event = createEvent(eventId);
+        seat = createSeat(seatId, event);
 
-        event = Event.builder()
-                .name("Java Meetup")
-                .location("Warsaw")
-                .build();
-        event.setId(eventId);
-
-        seat = Seat.builder()
-                .event(event)
-                .seatNumber("A1")
-                .build();
-        seat.setId(seatId);
+        reservationService = new ReservationServiceImpl(
+                reservationRepository,
+                eventRepository,
+                seatRepository,
+                appUserRepository,
+                entityManager,
+                List.of(reservationRule)
+        );
     }
 
     @Test
-    void createReservationShouldCreatePendingReservation() {
-        CreateReservationCommand command = new CreateReservationCommand(userId, eventId, seatId);
+    void createReservationShouldCreatePendingReservationWithExpirationTime() {
+        // arrange
+        CreateReservationCommand command = createReservationCommand();
 
-        when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
-        when(seatRepository.findById(seatId)).thenReturn(Optional.of(seat));
-        when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
+        givenExistingReservationResources();
+        givenReservationRulesPass();
+        givenSavedReservationIsReturned();
 
-        when(reservationRepository.existsByEvent_IdAndSeat_IdAndStatusIn(
-                eventId,
-                seatId,
-                ReservationStatus.ACTIVE_STATUSES
-        )).thenReturn(false);
-
-        when(reservationRepository.saveAndFlush(any(Reservation.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
+        // act
         Reservation result = reservationService.createReservation(command);
 
-        ArgumentCaptor<Reservation> captor = ArgumentCaptor.forClass(Reservation.class);
-        verify(reservationRepository).saveAndFlush(captor.capture());
-        verify(entityManager).refresh(result);
-
-        Reservation savedReservation = captor.getValue();
+        // assert
+        Reservation savedReservation = captureSavedReservation();
 
         assertThat(savedReservation.getUser()).isEqualTo(user);
         assertThat(savedReservation.getEvent()).isEqualTo(event);
         assertThat(savedReservation.getSeat()).isEqualTo(seat);
         assertThat(savedReservation.getStatus()).isEqualTo(ReservationStatus.PENDING);
+        assertThat(savedReservation.getExpiresAt()).isNotNull();
+        assertThat(savedReservation.getExpiresAt()).isAfter(Instant.now().plusSeconds(60));
 
+        assertThat(result).isSameAs(savedReservation);
         assertThat(result.getStatus()).isEqualTo(ReservationStatus.PENDING);
+
+        verify(entityManager).refresh(savedReservation);
     }
 
     @Test
     void createReservationShouldThrowWhenEventNotFound() {
-        CreateReservationCommand command = new CreateReservationCommand(userId, eventId, seatId);
+        // arrange
+        CreateReservationCommand command = createReservationCommand();
 
         when(eventRepository.findById(eventId)).thenReturn(Optional.empty());
 
+        // act + assert
         assertThatThrownBy(() -> reservationService.createReservation(command))
                 .isInstanceOf(EventNotFoundException.class);
 
-        verifyNoInteractions(seatRepository, appUserRepository);
-        verify(reservationRepository, never()).save(any());
+        verifyNoInteractions(seatRepository);
+        verifyNoInteractions(appUserRepository);
+        verifyNoInteractions(reservationRule);
+        verifyNoInteractions(reservationRepository);
+        verifyNoInteractions(entityManager);
     }
 
     @Test
     void createReservationShouldThrowWhenSeatNotFound() {
-        CreateReservationCommand command = new CreateReservationCommand(userId, eventId, seatId);
+        // arrange
+        CreateReservationCommand command = createReservationCommand();
 
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
         when(seatRepository.findById(seatId)).thenReturn(Optional.empty());
 
+        // act + assert
         assertThatThrownBy(() -> reservationService.createReservation(command))
                 .isInstanceOf(SeatNotFoundException.class);
 
         verifyNoInteractions(appUserRepository);
-        verify(reservationRepository, never()).save(any());
+        verifyNoInteractions(reservationRule);
+        verifyNoInteractions(reservationRepository);
+        verifyNoInteractions(entityManager);
     }
 
     @Test
     void createReservationShouldThrowWhenUserNotFound() {
-        CreateReservationCommand command = new CreateReservationCommand(userId, eventId, seatId);
+        // arrange
+        CreateReservationCommand command = createReservationCommand();
 
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
         when(seatRepository.findById(seatId)).thenReturn(Optional.of(seat));
         when(appUserRepository.findById(userId)).thenReturn(Optional.empty());
 
+        // act + assert
         assertThatThrownBy(() -> reservationService.createReservation(command))
                 .isInstanceOf(UserNotFoundException.class);
 
-        verify(reservationRepository, never()).save(any());
+        verifyNoInteractions(reservationRule);
+        verifyNoInteractions(reservationRepository);
+        verifyNoInteractions(entityManager);
     }
 
     @Test
-    void createReservationShouldThrowWhenSeatDoesNotBelongToEvent() {
-        UUID otherEventId = UUID.randomUUID();
+    void createReservationShouldThrowWhenReservationRuleIsNotSatisfied() {
+        // arrange
+        CreateReservationCommand command = createReservationCommand();
 
-        Event otherEvent = Event.builder()
-                .name("Other Event")
-                .location("Krakow")
-                .build();
-        otherEvent.setId(otherEventId);
+        RuntimeException ruleException = new SeatAlreadyReservedException(seatId, eventId);
 
-        Seat seatFromOtherEvent = Seat.builder()
-                .event(otherEvent)
-                .seatNumber("B1")
-                .build();
-        seatFromOtherEvent.setId(seatId);
+        givenExistingReservationResources();
 
-        CreateReservationCommand command = new CreateReservationCommand(userId, eventId, seatId);
+        when(reservationRule.isSatisfiedBy(any(ReservationCreationContext.class)))
+                .thenReturn(false);
 
-        when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
-        when(seatRepository.findById(seatId)).thenReturn(Optional.of(seatFromOtherEvent));
-        when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(reservationRule.exception(any(ReservationCreationContext.class)))
+                .thenReturn(ruleException);
 
+        // act + assert
         assertThatThrownBy(() -> reservationService.createReservation(command))
-                .isInstanceOf(SeatDoesNotBelongToEventException.class);
+                .isSameAs(ruleException);
 
-        verify(reservationRepository, never()).save(any());
+        verify(reservationRepository, never()).saveAndFlush(any(Reservation.class));
+        verifyNoInteractions(entityManager);
     }
 
     @Test
-    void createReservationShouldThrowWhenSeatAlreadyReserved() {
-        CreateReservationCommand command = new CreateReservationCommand(userId, eventId, seatId);
+    void createReservationShouldTranslateDatabaseConflictToSeatAlreadyReservedException() {
+        // arrange
+        CreateReservationCommand command = createReservationCommand();
 
-        when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
-        when(seatRepository.findById(seatId)).thenReturn(Optional.of(seat));
-        when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(reservationRepository.existsByEvent_IdAndSeat_IdAndStatusIn(
-                eventId,
-                seatId,
-                ReservationStatus.ACTIVE_STATUSES
-        )).thenReturn(true);
+        givenExistingReservationResources();
+        givenReservationRulesPass();
 
+        when(reservationRepository.saveAndFlush(any(Reservation.class)))
+                .thenThrow(new DataIntegrityViolationException("Unique constraint violation"));
+
+        // act + assert
         assertThatThrownBy(() -> reservationService.createReservation(command))
                 .isInstanceOf(SeatAlreadyReservedException.class);
 
-        verify(reservationRepository, never()).save(any());
+        verify(reservationRepository).saveAndFlush(any(Reservation.class));
+        verify(entityManager, never()).refresh(any());
     }
 
     @Test
     void confirmReservationShouldConfirmPendingReservation() {
-        Reservation reservation = Reservation.builder()
-                .status(ReservationStatus.PENDING)
-                .build();
-        reservation.setId(reservationId);
+        // arrange
+        Reservation reservation = createReservationWithStatus(ReservationStatus.PENDING);
 
         when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
+        // act
         Reservation result = reservationService.confirmReservation(reservationId);
 
+        // assert
         assertThat(result.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
     }
 
     @Test
     void confirmReservationShouldThrowWhenReservationAlreadyConfirmed() {
-        Reservation reservation = Reservation.builder()
-                .status(ReservationStatus.CONFIRMED)
-                .build();
-        reservation.setId(reservationId);
+        // arrange
+        Reservation reservation = createReservationWithStatus(ReservationStatus.CONFIRMED);
 
         when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
+        // act + assert
         assertThatThrownBy(() -> reservationService.confirmReservation(reservationId))
                 .isInstanceOf(ReservationAlreadyConfirmedException.class);
     }
 
     @Test
     void confirmReservationShouldThrowWhenCancelledReservationIsConfirmed() {
-        Reservation reservation = Reservation.builder()
-                .status(ReservationStatus.CANCELLED)
-                .build();
-        reservation.setId(reservationId);
+        // arrange
+        Reservation reservation = createReservationWithStatus(ReservationStatus.CANCELLED);
 
         when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
+        // act + assert
         assertThatThrownBy(() -> reservationService.confirmReservation(reservationId))
                 .isInstanceOf(CannotConfirmCancelledReservationException.class);
     }
 
     @Test
-    void cancelReservationShouldCancelReservation() {
-        Reservation reservation = Reservation.builder()
-                .status(ReservationStatus.PENDING)
-                .build();
-        reservation.setId(reservationId);
+    void cancelReservationShouldCancelPendingReservation() {
+        // arrange
+        Reservation reservation = createReservationWithStatus(ReservationStatus.PENDING);
 
         when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
+        // act
         Reservation result = reservationService.cancelReservation(reservationId);
 
+        // assert
         assertThat(result.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
     }
 
     @Test
     void cancelReservationShouldThrowWhenReservationAlreadyCancelled() {
-        Reservation reservation = Reservation.builder()
-                .status(ReservationStatus.CANCELLED)
-                .build();
-        reservation.setId(reservationId);
+        // arrange
+        Reservation reservation = createReservationWithStatus(ReservationStatus.CANCELLED);
 
         when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
 
+        // act + assert
         assertThatThrownBy(() -> reservationService.cancelReservation(reservationId))
                 .isInstanceOf(ReservationAlreadyCancelledException.class);
     }
 
-    @Test
-    void shouldThrowSeatAlreadyReservedExceptionWhenDatabaseConstraintIsViolated(){
-        UUID userId = UUID.randomUUID();
-        UUID eventId = UUID.randomUUID();
-        UUID seatId = UUID.randomUUID();
+    private CreateReservationCommand createReservationCommand() {
+        return new CreateReservationCommand(userId, eventId, seatId);
+    }
 
-        var command = new CreateReservationCommand(userId, eventId, seatId);
+    private void givenExistingReservationResources() {
+        when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
+        when(seatRepository.findById(seatId)).thenReturn(Optional.of(seat));
+        when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
+    }
 
-        var user = AppUser.builder()
+    private void givenReservationRulesPass() {
+        when(reservationRule.isSatisfiedBy(any(ReservationCreationContext.class)))
+                .thenReturn(true);
+    }
+
+    private void givenSavedReservationIsReturned() {
+        when(reservationRepository.saveAndFlush(any(Reservation.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    private Reservation captureSavedReservation() {
+        ArgumentCaptor<Reservation> reservationCaptor = ArgumentCaptor.forClass(Reservation.class);
+
+        verify(reservationRepository).saveAndFlush(reservationCaptor.capture());
+
+        return reservationCaptor.getValue();
+    }
+
+    private AppUser createUser(UUID id) {
+        AppUser user = AppUser.builder()
                 .email("john@example.com")
                 .username("john")
                 .build();
 
-        var event = Event.builder()
+        user.setId(id);
+
+        return user;
+    }
+
+    private Event createEvent(UUID id) {
+        Event event = Event.builder()
                 .name("Java Meetup")
                 .location("Warsaw")
                 .startsAt(Instant.now().plusSeconds(3600))
                 .build();
 
-        var seat = Seat.builder()
+        event.setId(id);
+
+        return event;
+    }
+
+    private Seat createSeat(UUID id, Event event) {
+        Seat seat = Seat.builder()
                 .event(event)
                 .seatNumber("A1")
                 .build();
 
-        ReflectionTestUtils.setField(user, "id", userId);
-        ReflectionTestUtils.setField(event, "id", eventId);
-        ReflectionTestUtils.setField(seat, "id", seatId);
+        seat.setId(id);
 
-        when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
-        when(seatRepository.findById(seatId)).thenReturn(Optional.of(seat));
-        when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
+        return seat;
+    }
 
-        when(reservationRepository.existsByEvent_IdAndSeat_IdAndStatusIn(
-                eventId,
-                seatId,
-                ReservationStatus.ACTIVE_STATUSES
-        )).thenReturn(false);
+    private Reservation createReservationWithStatus(ReservationStatus status) {
+        Reservation reservation = Reservation.builder()
+                .status(status)
+                .build();
 
-        when(reservationRepository.saveAndFlush(any(Reservation.class)))
-                .thenThrow(new DataIntegrityViolationException("Unique constraint violation"));
+        reservation.setId(reservationId);
 
-        assertThatThrownBy(() -> reservationService.createReservation(command))
-                .isInstanceOf(SeatAlreadyReservedException.class);
-
-        verify(reservationRepository).saveAndFlush(any(Reservation.class));
-        verify(entityManager, never()).refresh(any());
+        return reservation;
     }
 }

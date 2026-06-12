@@ -7,6 +7,8 @@ import pl.exceptionhandled.reservationlab.event.Event;
 import pl.exceptionhandled.reservationlab.seat.Seat;
 import pl.exceptionhandled.reservationlab.user.AppUser;
 
+import java.time.Instant;
+
 @Entity
 @Table(name = "reservations")
 @NoArgsConstructor
@@ -29,4 +31,6 @@ public class Reservation extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ReservationStatus status;
+    @Column(name = "expires_at")
+    private Instant expiresAt;
 }

@@ -6,7 +6,8 @@ import java.util.Set;
 public enum ReservationStatus {
     PENDING,
     CONFIRMED,
-    CANCELLED;
+    CANCELLED,
+    EXPIRED;
 
     public static final Set<ReservationStatus> ACTIVE_STATUSES =
             EnumSet.of(PENDING, CONFIRMED);

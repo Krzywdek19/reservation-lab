@@ -17,7 +17,6 @@ import pl.exceptionhandled.reservationlab.reservation.exception.ReservationAlrea
 import pl.exceptionhandled.reservationlab.reservation.exception.ReservationAlreadyConfirmedException;
 import pl.exceptionhandled.reservationlab.reservation.exception.ReservationNotFoundException;
 import pl.exceptionhandled.reservationlab.reservation.exception.SeatAlreadyReservedException;
-import pl.exceptionhandled.reservationlab.reservation.exception.SeatDoesNotBelongToEventException;
 import pl.exceptionhandled.reservationlab.reservation.rule.ReservationCreationContext;
 import pl.exceptionhandled.reservationlab.reservation.rule.ReservationRule;
 import pl.exceptionhandled.reservationlab.seat.SeatRepository;
@@ -25,6 +24,8 @@ import pl.exceptionhandled.reservationlab.seat.exception.SeatNotFoundException;
 import pl.exceptionhandled.reservationlab.user.AppUserRepository;
 import pl.exceptionhandled.reservationlab.user.exception.UserNotFoundException;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -65,6 +66,7 @@ public class ReservationServiceImpl implements ReservationService {
                 .seat(seat)
                 .user(user)
                 .status(ReservationStatus.PENDING)
+                .expiresAt(Instant.now().plus(Duration.ofMinutes(15)))
                 .build();
 
         try {
