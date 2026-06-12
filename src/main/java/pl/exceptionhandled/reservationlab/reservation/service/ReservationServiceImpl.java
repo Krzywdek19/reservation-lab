@@ -18,6 +18,8 @@ import pl.exceptionhandled.reservationlab.reservation.exception.ReservationAlrea
 import pl.exceptionhandled.reservationlab.reservation.exception.ReservationNotFoundException;
 import pl.exceptionhandled.reservationlab.reservation.exception.SeatAlreadyReservedException;
 import pl.exceptionhandled.reservationlab.reservation.exception.SeatDoesNotBelongToEventException;
+import pl.exceptionhandled.reservationlab.reservation.rule.ReservationCreationContext;
+import pl.exceptionhandled.reservationlab.reservation.rule.ReservationRule;
 import pl.exceptionhandled.reservationlab.seat.SeatRepository;
 import pl.exceptionhandled.reservationlab.seat.exception.SeatNotFoundException;
 import pl.exceptionhandled.reservationlab.user.AppUserRepository;
@@ -37,6 +39,7 @@ public class ReservationServiceImpl implements ReservationService {
     private final SeatRepository seatRepository;
     private final AppUserRepository appUserRepository;
     private final EntityManager entityManager;
+    private final List<ReservationRule> reservationRules;
 
     @Override
     public Reservation createReservation(@Valid CreateReservationCommand command) {
@@ -49,18 +52,12 @@ public class ReservationServiceImpl implements ReservationService {
         var user = appUserRepository.findById(command.userId())
                 .orElseThrow(() -> new UserNotFoundException(command.userId()));
 
-        if (!seat.getEvent().getId().equals(event.getId())) {
-            throw new SeatDoesNotBelongToEventException(seat.getId(), event.getId());
-        }
+        var context = new ReservationCreationContext(user,event,seat);
 
-        boolean alreadyReserved = reservationRepository.existsByEvent_IdAndSeat_IdAndStatusIn(
-                event.getId(),
-                seat.getId(),
-                ReservationStatus.ACTIVE_STATUSES
-        );
-
-        if (alreadyReserved) {
-            throw new SeatAlreadyReservedException(seat.getId(), event.getId());
+        for(ReservationRule rule : reservationRules) {
+            if(!rule.isSatisfiedBy(context)) {
+                throw rule.exception(context);
+            }
         }
 
         var reservation = Reservation.builder()
