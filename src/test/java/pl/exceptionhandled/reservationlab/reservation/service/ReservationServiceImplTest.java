@@ -14,10 +14,7 @@ import pl.exceptionhandled.reservationlab.event.exception.EventNotFoundException
 import pl.exceptionhandled.reservationlab.reservation.Reservation;
 import pl.exceptionhandled.reservationlab.reservation.ReservationRepository;
 import pl.exceptionhandled.reservationlab.reservation.ReservationStatus;
-import pl.exceptionhandled.reservationlab.reservation.exception.CannotConfirmCancelledReservationException;
-import pl.exceptionhandled.reservationlab.reservation.exception.ReservationAlreadyCancelledException;
-import pl.exceptionhandled.reservationlab.reservation.exception.ReservationAlreadyConfirmedException;
-import pl.exceptionhandled.reservationlab.reservation.exception.SeatAlreadyReservedException;
+import pl.exceptionhandled.reservationlab.reservation.exception.*;
 import pl.exceptionhandled.reservationlab.reservation.rule.ReservationCreationContext;
 import pl.exceptionhandled.reservationlab.reservation.rule.ReservationRule;
 import pl.exceptionhandled.reservationlab.seat.Seat;
@@ -279,6 +276,24 @@ class ReservationServiceImplTest {
         // act + assert
         assertThatThrownBy(() -> reservationService.cancelReservation(reservationId))
                 .isInstanceOf(ReservationAlreadyCancelledException.class);
+    }
+
+    @Test
+    void confirmReservationShouldThrowWhenReservationIsExpired() {
+        // arrange
+        Reservation reservation = Reservation.builder()
+                .status(ReservationStatus.PENDING)
+                .expiresAt(Instant.now().minusSeconds(60))
+                .build();
+
+        reservation.setId(reservationId);
+
+        when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> reservationService.confirmReservation(reservationId))
+                .isInstanceOf(CannotConfirmExpiredReservationException.class);
+
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.EXPIRED);
     }
 
     private CreateReservationCommand createReservationCommand() {

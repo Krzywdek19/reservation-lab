@@ -13,6 +13,7 @@ import pl.exceptionhandled.reservationlab.reservation.Reservation;
 import pl.exceptionhandled.reservationlab.reservation.ReservationRepository;
 import pl.exceptionhandled.reservationlab.reservation.ReservationStatus;
 import pl.exceptionhandled.reservationlab.reservation.exception.CannotConfirmCancelledReservationException;
+import pl.exceptionhandled.reservationlab.reservation.exception.CannotConfirmExpiredReservationException;
 import pl.exceptionhandled.reservationlab.reservation.exception.ReservationAlreadyCancelledException;
 import pl.exceptionhandled.reservationlab.reservation.exception.ReservationAlreadyConfirmedException;
 import pl.exceptionhandled.reservationlab.reservation.exception.ReservationNotFoundException;
@@ -118,6 +119,15 @@ public class ReservationServiceImpl implements ReservationService {
 
         if (reservation.getStatus().equals(ReservationStatus.CANCELLED)) {
             throw new CannotConfirmCancelledReservationException(reservationId);
+        }
+
+        if(reservation.getStatus().equals(ReservationStatus.EXPIRED)) {
+            throw new CannotConfirmExpiredReservationException(reservationId);
+        }
+
+        if(reservation.getExpiresAt() != null && reservation.getExpiresAt().isBefore(Instant.now())) {
+            reservation.setStatus(ReservationStatus.EXPIRED);
+            throw new CannotConfirmExpiredReservationException(reservationId);
         }
 
         reservation.setStatus(ReservationStatus.CONFIRMED);
