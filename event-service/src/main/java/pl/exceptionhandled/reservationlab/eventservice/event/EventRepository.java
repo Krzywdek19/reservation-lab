@@ -1,9 +1,8 @@
-package pl.exceptionhandled.reservationlab.event;
+package pl.exceptionhandled.reservationlab.eventservice.event;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.UUID;
 
 public interface EventRepository extends JpaRepository<Event, UUID> {
-    boolean existsByExternalEventId(UUID externalEventId);
 }

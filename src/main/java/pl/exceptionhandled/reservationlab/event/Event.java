@@ -8,6 +8,7 @@ import pl.exceptionhandled.reservationlab.seat.Seat;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @NoArgsConstructor
@@ -17,6 +18,8 @@ import java.util.List;
 @Builder
 @Table(name = "events")
 public class Event extends BaseEntity {
+    @Column(name = "external_event_id", unique = true)
+    private UUID externalEventId;
     @Column(nullable = false)
     private String name;
     @Column(nullable = false)

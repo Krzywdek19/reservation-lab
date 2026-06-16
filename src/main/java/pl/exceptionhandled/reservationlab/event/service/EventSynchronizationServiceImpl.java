@@ -12,20 +12,19 @@ import pl.exceptionhandled.reservationlab.event.message.EventCreatedMessage;
 public class EventSynchronizationServiceImpl implements EventSynchronizationService {
     private final EventRepository eventRepository;
 
-    @Transactional
     @Override
+    @Transactional
     public void synchronizeEventCreated(EventCreatedMessage message) {
-        if(eventRepository.existsById(message.eventId())) {
+        if (eventRepository.existsByExternalEventId(message.eventId())) {
             return;
         }
 
         Event event = Event.builder()
+                .externalEventId(message.eventId())
                 .name(message.name())
                 .location(message.location())
                 .startsAt(message.startsAt())
                 .build();
-
-        event.setId(message.eventId());
 
         eventRepository.save(event);
     }

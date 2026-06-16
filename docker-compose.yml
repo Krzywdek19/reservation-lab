@@ -10,6 +10,17 @@ services:
         - "5432:5432"
     volumes:
         - postgres_data:/var/lib/postgresql/data
+  event-service-postgres:
+    image: postgres:16
+    container_name: event-service-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: event_service
+      POSTGRES_USER: event_user
+      POSTGRES_PASSWORD: event_password
+    volumes:
+      - event-service-postgres-data:/var/lib/postgresql/data
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -22,3 +33,4 @@ services:
       RABBITMQ_DEFAULT_PASS: guest
 volumes:
   postgres_data:
+  event-service-postgres-data:

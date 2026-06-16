@@ -11,7 +11,7 @@ import pl.exceptionhandled.reservationlab.event.service.EventSynchronizationServ
 public class EventCreatedMessageListener {
     private final EventSynchronizationService eventSynchronizationService;
 
-    @RabbitListener(queues = "${app.messaging.queues.event-created}}")
+    @RabbitListener(queues = "${app.messaging.queues.event-created}")
     public void handle(EventCreatedMessage eventCreatedMessage) {
         eventSynchronizationService.synchronizeEventCreated(eventCreatedMessage);
     }

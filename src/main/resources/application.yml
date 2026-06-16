@@ -35,5 +35,8 @@ server:
 
 app:
   messaging:
+    exchange: events.exchange
     queues:
       event-created: event.created.queue
+    routing-keys:
+      event-created: event.created
