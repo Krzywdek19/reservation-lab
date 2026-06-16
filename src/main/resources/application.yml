@@ -2,6 +2,13 @@ spring:
   application:
     name: reservation-lab
 
+  rabbitmq:
+    host: localhost
+    port: 5672
+    stream:
+      username: guest
+      password: guest
+
   datasource:
     url: jdbc:postgresql://localhost:5432/reservation_lab
     username: reservation_lab_user
@@ -25,3 +32,8 @@ spring:
 
 server:
   port: 8080
+
+app:
+  messaging:
+    queues:
+      event-created: event.created.queue
