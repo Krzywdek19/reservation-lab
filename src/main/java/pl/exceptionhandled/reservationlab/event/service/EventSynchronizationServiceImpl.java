@@ -14,7 +14,7 @@ public class EventSynchronizationServiceImpl implements EventSynchronizationServ
 
     @Transactional
     @Override
-    public void synchronizeEventCreate(EventCreatedMessage message) {
+    public void synchronizeEventCreated(EventCreatedMessage message) {
         if(eventRepository.existsById(message.eventId())) {
             return;
         }
