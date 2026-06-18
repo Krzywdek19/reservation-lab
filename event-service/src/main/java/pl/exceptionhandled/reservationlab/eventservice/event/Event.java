@@ -19,6 +19,7 @@ import java.util.UUID;
 public class Event {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(nullable = false)
@@ -39,10 +40,6 @@ public class Event {
 
     @PrePersist
     void onCreate() {
-        if (id == null) {
-            id = UUID.randomUUID();
-        }
-
         if (createdAt == null) {
             createdAt = Instant.now();
         }

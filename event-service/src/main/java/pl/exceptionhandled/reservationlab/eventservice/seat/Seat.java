@@ -22,6 +22,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class Seat {
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -36,10 +37,6 @@ public class Seat {
 
     @PrePersist
     void onCreate() {
-        if(id == null) {
-            id = UUID.randomUUID();
-        }
-
         if(createdAt == null) {
             createdAt = Instant.now();
         }
