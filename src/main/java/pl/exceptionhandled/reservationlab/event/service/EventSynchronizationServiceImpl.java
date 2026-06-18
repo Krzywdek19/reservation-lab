@@ -6,11 +6,16 @@ import org.springframework.transaction.annotation.Transactional;
 import pl.exceptionhandled.reservationlab.event.Event;
 import pl.exceptionhandled.reservationlab.event.EventRepository;
 import pl.exceptionhandled.reservationlab.event.message.EventCreatedMessage;
+import pl.exceptionhandled.reservationlab.seat.Seat;
+import pl.exceptionhandled.reservationlab.seat.SeatRepository;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class EventSynchronizationServiceImpl implements EventSynchronizationService {
     private final EventRepository eventRepository;
+    private final SeatRepository seatRepository;
 
     @Override
     @Transactional
@@ -26,6 +31,17 @@ public class EventSynchronizationServiceImpl implements EventSynchronizationServ
                 .startsAt(message.startsAt())
                 .build();
 
-        eventRepository.save(event);
+        Event savedEvent = eventRepository.save(event);
+
+        List<Seat> seats = message.seatNumbers()
+                .stream()
+                .distinct()
+                .map(seatNumber -> Seat.builder()
+                        .event(savedEvent)
+                        .seatNumber(seatNumber)
+                        .build())
+                .toList();
+
+        seatRepository.saveAll(seats);
     }
 }
