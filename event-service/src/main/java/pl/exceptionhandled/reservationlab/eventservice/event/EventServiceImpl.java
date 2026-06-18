@@ -7,6 +7,7 @@ import pl.exceptionhandled.reservationlab.eventservice.event.dto.CreateEventRequ
 import pl.exceptionhandled.reservationlab.eventservice.event.dto.EventResponse;
 import pl.exceptionhandled.reservationlab.eventservice.event.message.EventCreatedMessage;
 import pl.exceptionhandled.reservationlab.eventservice.event.message.EventCreatedPublisher;
+import pl.exceptionhandled.reservationlab.eventservice.outbox.OutboxService;
 import pl.exceptionhandled.reservationlab.eventservice.seat.Seat;
 
 import java.util.List;
@@ -17,6 +18,7 @@ public class EventServiceImpl implements EventService {
 
     private final EventRepository eventRepository;
     private final EventCreatedPublisher eventCreatedPublisher;
+    private final OutboxService outboxService;
 
     @Transactional
     @Override
@@ -36,7 +38,7 @@ public class EventServiceImpl implements EventService {
 
         Event savedEvent = eventRepository.saveAndFlush(event);
 
-        eventCreatedPublisher.publish(new EventCreatedMessage(
+        EventCreatedMessage eventCreatedMessage = new EventCreatedMessage(
                 savedEvent.getId(),
                 savedEvent.getName(),
                 savedEvent.getLocation(),
@@ -45,7 +47,9 @@ public class EventServiceImpl implements EventService {
                         .stream()
                         .map(Seat::getSeatNumber)
                         .toList()
-        ));
+        );
+
+        outboxService.saveEventCreatedMessage(eventCreatedMessage);
 
         return new EventResponse(
                 savedEvent.getId(),
