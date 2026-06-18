@@ -5,6 +5,7 @@ import pl.exceptionhandled.reservationlab.event.message.listener.EventCreatedMes
 import pl.exceptionhandled.reservationlab.event.service.EventSynchronizationService;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.Mockito.mock;
@@ -24,7 +25,8 @@ class EventCreatedMessageListenerTest {
                 UUID.randomUUID(),
                 "Java Meetup",
                 "Warsaw",
-                Instant.now().plusSeconds(3600)
+                Instant.now().plusSeconds(3600),
+                List.of()
         );
 
         listener.handle(message);
