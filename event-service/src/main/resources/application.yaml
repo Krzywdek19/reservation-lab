@@ -1,0 +1,35 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: event-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/event_service
+    username: event_user
+    password: event_password
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  flyway:
+    enabled: true
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+app:
+  messaging:
+    exchange: events.exchange
+    routing-keys:
+      event-created: event.created
+  outbox:
+    publisher:
+      enabled: true
+      fixed-delay-ms: 5000
