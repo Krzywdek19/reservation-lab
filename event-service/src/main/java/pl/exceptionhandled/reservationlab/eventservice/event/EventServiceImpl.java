@@ -8,6 +8,11 @@ import pl.exceptionhandled.reservationlab.eventservice.event.dto.EventResponse;
 import pl.exceptionhandled.reservationlab.eventservice.event.message.EventCreatedMessage;
 import pl.exceptionhandled.reservationlab.eventservice.outbox.OutboxService;
 import pl.exceptionhandled.reservationlab.eventservice.seat.Seat;
+import pl.exceptionhandled.reservationlab.eventservice.seat.exception.DuplicatedSeatNumberException;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 
 @Service
@@ -20,6 +25,8 @@ public class EventServiceImpl implements EventService {
     @Transactional
     @Override
     public EventResponse createEvent(CreateEventRequest request) {
+        validateSeatNumbers(request.seatNumbers());
+
         Event event = Event.builder()
                 .name(request.name())
                 .location(request.location())
@@ -55,5 +62,15 @@ public class EventServiceImpl implements EventService {
                 savedEvent.getStartsAt(),
                 savedEvent.getCreatedAt()
         );
+    }
+
+    private void validateSeatNumbers(List<String> seatNumbers) {
+        Set<String> uniqueSeatNumbers = new HashSet<>();
+
+        for (String seatNumber : seatNumbers) {
+            if (!uniqueSeatNumbers.add(seatNumber)) {
+                throw new DuplicatedSeatNumberException(seatNumber);
+            }
+        }
     }
 }
