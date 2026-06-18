@@ -1,4 +1,4 @@
-package pl.exceptionhandled.reservationlab.eventservice.global;
+package pl.exceptionhandled.reservationlab.eventservice.common.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -9,7 +9,7 @@ import pl.exceptionhandled.reservationlab.eventservice.seat.exception.Duplicated
 import java.util.Map;
 
 @RestControllerAdvice
-public class GlobalControllerAdvice {
+public class GlobalExceptionHandler {
     @ExceptionHandler(DuplicatedSeatNumberException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Map<String, String> handleDuplicatedSeatNumberException(DuplicatedSeatNumberException exception) {
