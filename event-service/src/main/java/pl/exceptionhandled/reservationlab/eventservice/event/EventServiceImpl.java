@@ -8,6 +8,8 @@ import pl.exceptionhandled.reservationlab.eventservice.event.dto.EventResponse;
 import pl.exceptionhandled.reservationlab.eventservice.event.message.EventCreatedMessage;
 import pl.exceptionhandled.reservationlab.eventservice.event.message.EventCreatedPublisher;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class EventServiceImpl implements EventService{
@@ -29,7 +31,8 @@ public class EventServiceImpl implements EventService{
                 savedEvent.getId(),
                 savedEvent.getName(),
                 savedEvent.getLocation(),
-                savedEvent.getStartsAt()
+                savedEvent.getStartsAt(),
+                List.of()
         ));
 
         return new EventResponse(
